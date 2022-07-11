@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
+ * Copyright (C) 2021 XiaoMi, Inc.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -1774,6 +1775,8 @@ void dp_rx_msdu_stats_update(struct dp_soc *soc, qdf_nbuf_t nbuf,
 	 */
 	if (!soc->process_rx_status)
 		return;
+
+	peer->stats.rx.last_rx_ts = qdf_system_ticks();
 
 	/*
 	 * TODO - For WCN7850 this field is present in ring_desc

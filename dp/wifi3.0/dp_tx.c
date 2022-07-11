@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -368,6 +369,21 @@ dp_tx_tso_history_add(struct dp_soc *soc, struct qdf_tso_info_t tso_info,
 {
 }
 #endif /* WLAN_FEATURE_DP_TX_DESC_HISTORY */
+
+static int dp_get_rtpm_tput_policy_requirement(struct dp_soc *soc);
+
+/**
+ * dp_is_tput_high() - Check if throughput is high
+ *
+ * @soc - core txrx main context
+ *
+ * The current function is based of the RTPM tput policy variable where RTPM is
+ * avoided based on throughput.
+ */
+static inline int dp_is_tput_high(struct dp_soc *soc)
+{
+	return dp_get_rtpm_tput_policy_requirement(soc);
+}
 
 #if defined(FEATURE_TSO)
 /**
@@ -946,14 +962,19 @@ struct dp_tx_ext_desc_elem_s *dp_tx_prepare_ext_desc(struct dp_vdev *vdev,
  * Return: None
  */
 #ifdef DP_DISABLE_TX_PKT_TRACE
-static void dp_tx_trace_pkt(qdf_nbuf_t skb, uint16_t msdu_id,
+static void dp_tx_trace_pkt(struct dp_soc *soc,
+			    qdf_nbuf_t skb, uint16_t msdu_id,
 			    uint8_t vdev_id)
 {
 }
 #else
-static void dp_tx_trace_pkt(qdf_nbuf_t skb, uint16_t msdu_id,
+static void dp_tx_trace_pkt(struct dp_soc *soc,
+			    qdf_nbuf_t skb, uint16_t msdu_id,
 			    uint8_t vdev_id)
 {
+	if (dp_is_tput_high(soc))
+		return;
+
 	QDF_NBUF_CB_TX_PACKET_TRACK(skb) = QDF_NBUF_TX_PKT_DATA_TRACK;
 	QDF_NBUF_CB_TX_DP_TRACE(skb) = 1;
 	DPTRACE(qdf_dp_trace_ptr(skb,
@@ -1045,7 +1066,7 @@ struct dp_tx_desc_s *dp_tx_prepare_desc_single(struct dp_vdev *vdev,
 	tx_desc->pkt_offset = 0;
 	tx_desc->length = qdf_nbuf_headlen(nbuf);
 
-	dp_tx_trace_pkt(nbuf, tx_desc->id, vdev->vdev_id);
+	dp_tx_trace_pkt(soc, nbuf, tx_desc->id, vdev->vdev_id);
 
 	if (qdf_unlikely(vdev->multipass_en)) {
 		if (!dp_tx_multipass_process(soc, vdev, nbuf, msdu_info))
@@ -1178,7 +1199,7 @@ static struct dp_tx_desc_s *dp_tx_prepare_desc(struct dp_vdev *vdev,
 	tx_desc->tso_desc = msdu_info->u.tso_info.curr_seg;
 	tx_desc->tso_num_desc = msdu_info->u.tso_info.tso_num_seg_list;
 
-	dp_tx_trace_pkt(nbuf, tx_desc->id, vdev->vdev_id);
+	dp_tx_trace_pkt(soc, nbuf, tx_desc->id, vdev->vdev_id);
 
 	/* Handle scattered frames - TSO/SG/ME */
 	/* Allocate and prepare an extension descriptor for scattered frames */
@@ -1416,6 +1437,10 @@ dp_tx_ring_access_end(struct dp_soc *soc, hal_ring_handle_t hal_ring_hdl,
 #endif
 
 #ifdef FEATURE_RUNTIME_PM
+static inline int dp_get_rtpm_tput_policy_requirement(struct dp_soc *soc)
+{
+	return qdf_atomic_read(&soc->rtpm_high_tput_flag);
+}
 /**
  * dp_tx_ring_access_end_wrapper() - Wrapper for ring access end
  * @soc: Datapath soc handle
@@ -1433,6 +1458,14 @@ dp_tx_ring_access_end_wrapper(struct dp_soc *soc,
 			      int coalesce)
 {
 	int ret;
+
+	/*
+	 * Avoid runtime get and put APIs under high throughput scenarios.
+	 */
+	if (dp_get_rtpm_tput_policy_requirement(soc)) {
+		dp_tx_ring_access_end(soc, hal_ring_hdl, coalesce);
+		return;
+	}
 
 	ret = hif_pm_runtime_get(soc->hif_handle,
 				 RTPM_ID_DW_TX_HW_ENQUEUE, true);
@@ -1471,6 +1504,11 @@ dp_tx_ring_access_end_wrapper(struct dp_soc *soc,
 		hal_srng_inc_flush_cnt(hal_ring_hdl);
 		dp_runtime_put(soc);
 	}
+}
+#else
+static inline int dp_get_rtpm_tput_policy_requirement(struct dp_soc *soc)
+{
+	return 0;
 }
 #endif
 
@@ -3731,6 +3769,7 @@ dp_tx_update_peer_stats(struct dp_tx_desc_s *tx_desc,
 	DP_STATS_INCC(peer, tx.stbc, 1, ts->stbc);
 	DP_STATS_INCC(peer, tx.ldpc, 1, ts->ldpc);
 	DP_STATS_INCC(peer, tx.retries, 1, ts->transmit_cnt > 1);
+	peer->stats.tx.last_tx_ts = qdf_system_ticks();
 }
 
 #ifdef QCA_LL_TX_FLOW_CONTROL_V2

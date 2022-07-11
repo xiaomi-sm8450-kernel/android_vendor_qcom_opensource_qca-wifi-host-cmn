@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -966,6 +967,8 @@ struct dp_soc_stats {
 	struct {
 		/* Total packets transmitted */
 		struct cdp_pkt_info egress;
+		/* Enqueues per tcl ring */
+		uint32_t tcl_enq[MAX_TCL_DATA_RINGS];
 		/* packets dropped on tx because of no peer */
 		struct cdp_pkt_info tx_invalid_peer;
 		/* descriptors in each tcl ring */
@@ -2210,6 +2213,10 @@ struct dp_soc {
 
 	/* Number of Rx refill rings */
 	uint8_t num_rx_refill_buf_rings;
+#ifdef FEATURE_RUNTIME_PM
+	/* flag to indicate vote for runtime_pm for high tput castt*/
+	qdf_atomic_t rtpm_high_tput_flag;
+#endif
 };
 
 #ifdef IPA_OFFLOAD

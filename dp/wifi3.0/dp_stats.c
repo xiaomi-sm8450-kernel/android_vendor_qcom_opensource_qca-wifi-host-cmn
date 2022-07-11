@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2017-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -4945,6 +4946,8 @@ void dp_print_soc_cfg_params(struct dp_soc *soc)
 		       soc_cfg_ctx->sg_enabled);
 	DP_PRINT_STATS("Gro enabled: %u ",
 		       soc_cfg_ctx->gro_enabled);
+	DP_PRINT_STATS("Force Gro enabled: %u ",
+		       soc_cfg_ctx->force_gro_enabled);
 	DP_PRINT_STATS("rawmode enabled: %u ",
 		       soc_cfg_ctx->rawmode_enabled);
 	DP_PRINT_STATS("peer flow ctrl enabled: %u ",
@@ -5970,6 +5973,9 @@ void dp_txrx_path_stats(struct dp_soc *soc)
 		DP_PRINT_STATS("successfully transmitted: %u msdus (%llu bytes)",
 			       pdev->stats.tx.tx_success.num,
 			       pdev->stats.tx.tx_success.bytes);
+		for (i = 0; i < soc->num_tcl_data_rings; i++)
+			DP_PRINT_STATS("Enqueue to SW2TCL%u: %u", i + 1,
+				       soc->stats.tx.tcl_enq[i]);
 
 		DP_PRINT_STATS("Dropped in host:");
 		DP_PRINT_STATS("Total packets dropped: %u,",
@@ -6469,7 +6475,6 @@ dp_print_soc_tx_stats(struct dp_soc *soc)
 		       soc->stats.tx.hp_oos2);
 }
 
-#ifdef CONFIG_BERYLLIUM
 static
 int dp_fill_rx_interrupt_ctx_stats(struct dp_intr *intr_ctx,
 				   char *buf, int buf_len)
@@ -6586,34 +6591,6 @@ void dp_print_soc_interrupt_stats(struct dp_soc *soc)
 		dp_info("%s", int_ctx_str);
 	}
 }
-
-#else
-void dp_print_soc_interrupt_stats(struct dp_soc *soc)
-{
-	int i = 0;
-	struct dp_intr_stats *intr_stats;
-
-	DP_PRINT_STATS("INT:     Total  |txComps|reo[0] |reo[1] |reo[2] |reo[3] |mon    |rx_err | wbm   |reo_sta|rxdm2hst|hst2rxdm|");
-	for (i = 0; i < WLAN_CFG_INT_NUM_CONTEXTS; i++) {
-		intr_stats = &soc->intr_ctx[i].intr_stats;
-		DP_PRINT_STATS("%3u[%3d]: %7u %7u %7u %7u %7u %7u %7u %7u %7u %7u %8u %8u",
-			       i,
-			       hif_get_int_ctx_irq_num(soc->hif_handle, i),
-			       intr_stats->num_masks,
-			       intr_stats->num_tx_ring_masks[0],
-			       intr_stats->num_rx_ring_masks[0],
-			       intr_stats->num_rx_ring_masks[1],
-			       intr_stats->num_rx_ring_masks[2],
-			       intr_stats->num_rx_ring_masks[3],
-			       intr_stats->num_rx_mon_ring_masks,
-			       intr_stats->num_rx_err_ring_masks,
-			       intr_stats->num_rx_wbm_rel_ring_masks,
-			       intr_stats->num_reo_status_ring_masks,
-			       intr_stats->num_rxdma2host_ring_masks,
-			       intr_stats->num_host2rxdma_ring_masks);
-		}
-}
-#endif
 
 void
 dp_print_soc_rx_stats(struct dp_soc *soc)

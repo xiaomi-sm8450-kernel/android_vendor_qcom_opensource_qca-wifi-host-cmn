@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2012-2021 The Linux Foundation. All rights reserved.
+ * Copyright (C) 2021 XiaoMi, Inc.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -4874,6 +4875,22 @@ enum qca_wlan_vendor_attr_config {
 	 * this attribute are 1-Enable and 0-Disable.
 	 */
 	QCA_WLAN_VENDOR_ATTR_CONFIG_FT_OVER_DS = 80,
+
+	/* 8-bit unsigned value to set nss and ant mode.
+	 * 1-1x1, 2-2x2
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_SET_NSS_ANT = 82,
+
+	/* 8-bit unsigned value to trigger dynamic nss feature.
+	 * 1-Enable, 0-Disable
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_DYNAMIC_NSS_SWITCH = 85,
+
+	/* 8-bit unsigned value to set bt in active or not.
+	 * 1-active, 0-inactive
+	 */
+	QCA_WLAN_VENDOR_ATTR_CONFIG_BT_ACTIVE = 86,
+
 	/* keep last */
 	QCA_WLAN_VENDOR_ATTR_CONFIG_AFTER_LAST,
 	QCA_WLAN_VENDOR_ATTR_CONFIG_MAX =

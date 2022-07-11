@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2013-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -162,6 +163,7 @@ struct wlan_srng_cfg {
  * @lro_enabled: enable/disable LRO feature
  * @sg_enabled: enable disable scatter gather feature
  * @gro_enabled: enable disable GRO feature
+ * @force_gro_enabled: force enable GRO feature
  * @ipa_enabled: Flag indicating if IPA is enabled
  * @ol_tx_csum_enabled: Flag indicating if TX csum is enabled
  * @ol_rx_csum_enabled: Flag indicating if Rx csum is enabled
@@ -233,6 +235,8 @@ struct wlan_srng_cfg {
  * @pkt_capture_mode: Packet capture mode config
  * @rx_mon_buf_ring_size: Rx monitor buf ring size
  * @tx_mon_buf_ring_size: Tx monitor buf ring size
+ * @tx_rings_grp_bitmap: bitmap of group intr contexts which have
+ *  non-zero tx ring mask
  */
 struct wlan_cfg_dp_soc_ctxt {
 	int num_int_ctxts;
@@ -286,6 +290,7 @@ struct wlan_cfg_dp_soc_ctxt {
 	bool lro_enabled;
 	bool sg_enabled;
 	bool gro_enabled;
+	bool force_gro_enabled;
 	bool ipa_enabled;
 	bool ol_tx_csum_enabled;
 	bool ol_rx_csum_enabled;
@@ -381,6 +386,7 @@ struct wlan_cfg_dp_soc_ctxt {
 	uint32_t rx_mon_buf_ring_size;
 	uint32_t tx_mon_buf_ring_size;
 	uint8_t rx_rel_wbm2sw_ring_id;
+	uint32_t tx_rings_grp_bitmap;
 };
 
 /**

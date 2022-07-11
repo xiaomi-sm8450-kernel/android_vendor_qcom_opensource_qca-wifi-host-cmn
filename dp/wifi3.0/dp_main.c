@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2016-2021 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2021 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Permission to use, copy, modify, and/or distribute this software for
  * any purpose with or without fee is hereby granted, provided that the
@@ -4053,6 +4054,9 @@ static bool dp_ipa_is_alt_tx_comp_ring(int index)
 static void dp_ipa_get_tx_ring_size(int tx_ring_num, int *tx_ipa_ring_sz,
 				    struct wlan_cfg_dp_soc_ctxt *soc_cfg_ctx)
 {
+	if (!soc_cfg_ctx->ipa_enabled)
+		return;
+
 	if (tx_ring_num == IPA_TCL_DATA_RING_IDX)
 		*tx_ipa_ring_sz = wlan_cfg_ipa_tx_ring_size(soc_cfg_ctx);
 	else if (dp_ipa_is_alt_tx_ring(tx_ring_num))
@@ -4072,6 +4076,9 @@ static void dp_ipa_get_tx_comp_ring_size(int tx_comp_ring_num,
 					 int *tx_comp_ipa_ring_sz,
 				       struct wlan_cfg_dp_soc_ctxt *soc_cfg_ctx)
 {
+	if (!soc_cfg_ctx->ipa_enabled)
+		return;
+
 	if (tx_comp_ring_num == IPA_TCL_DATA_RING_IDX)
 		*tx_comp_ipa_ring_sz =
 				wlan_cfg_ipa_tx_comp_ring_size(soc_cfg_ctx);
@@ -10983,6 +10990,9 @@ static uint32_t dp_get_cfg(struct cdp_soc_t *soc, enum cdp_dp_cfg cfg)
 	case cfg_dp_gro_enable:
 		value = dpsoc->wlan_cfg_ctx->gro_enabled;
 		break;
+	case cfg_dp_force_gro_enable:
+		value = dpsoc->wlan_cfg_ctx->force_gro_enabled;
+		break;
 	case cfg_dp_sg_enable:
 		value = dpsoc->wlan_cfg_ctx->sg_enabled;
 		break;
@@ -11276,6 +11286,9 @@ static struct cdp_cmn_ops dp_ops_cmn = {
 
 #if defined(FEATURE_RUNTIME_PM) || defined(DP_POWER_SAVE)
 	.txrx_drain = dp_drain_txrx,
+#endif
+#if defined(FEATURE_RUNTIME_PM)
+	.set_rtpm_tput_policy = dp_set_rtpm_tput_policy_requirement,
 #endif
 #ifdef WLAN_SYSFS_DP_STATS
 	.txrx_sysfs_fill_stats = dp_sysfs_fill_stats,
@@ -11841,6 +11854,14 @@ void dp_reset_rx_hw_ext_stats(struct cdp_soc_t *soc_hdl)
 }
 #endif /* WLAN_FEATURE_STATS_EXT */
 
+static
+uint32_t dp_get_tx_rings_grp_bitmap(struct cdp_soc_t *soc_hdl)
+{
+	struct dp_soc *soc = (struct dp_soc *)soc_hdl;
+
+	return soc->wlan_cfg_ctx->tx_rings_grp_bitmap;
+}
+
 #ifdef DP_PEER_EXTENDED_API
 static struct cdp_misc_ops dp_ops_misc = {
 #ifdef FEATURE_WLAN_TDLS
@@ -11870,6 +11891,7 @@ static struct cdp_misc_ops dp_ops_misc = {
 	.is_swlm_enabled = dp_soc_is_swlm_enabled,
 #endif
 	.display_txrx_hw_info = dp_display_srng_info,
+	.get_tx_rings_grp_bitmap = dp_get_tx_rings_grp_bitmap,
 };
 #endif
 
